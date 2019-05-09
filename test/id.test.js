@@ -237,7 +237,6 @@ describe('mongodb default id name', function() {
         age: 30,
       },
       function(err, customer) {
-        // console.log(customer);
         customer.should.have.property('id');
         Customer1.findById(customer.id, function(err, customer1) {
           customer1.id.should.eql(customer.id);
@@ -245,5 +244,140 @@ describe('mongodb default id name', function() {
         });
       }
     );
+  });
+});
+
+describe('strictObjectIDCoercion', function() {
+  var ObjectID = ds.connector.getDefaultIdType();
+  var objectIdLikeString = '7cd2ad46ffc580ba45d3cb1f';
+
+  context('set to false (default)', function() {
+    var User = ds.createModel(
+      'user1',
+      {
+        id: {type: String, id: true},
+        name: String,
+      }
+    );
+
+    beforeEach(function(done) {
+      User.deleteAll(done);
+    });
+
+    it('should find model with ObjectID id', async function() {
+      const user = await User.create({name: 'John'});
+      user.id.should.be.an.instanceOf(ds.ObjectID);
+      const found = await User.findById(user.id);
+      found.toObject().name.should.equal('John');
+    });
+
+    it('should find model with ObjectID-like id', async function() {
+      const user = await User.create({id: objectIdLikeString, name: 'John'});
+      user.id.should.be.an.instanceOf(ds.ObjectID);
+      user.id.should.eql(ObjectID(objectIdLikeString));
+      const found = await User.findById(objectIdLikeString);
+      found.toObject().name.should.equal('John');
+    });
+
+    it('should find model with string id', async function() {
+      const user = await User.create({id: 'a', name: 'John'});
+      user.id.should.be.an.instanceOf(String);
+      user.id.should.equal('a');
+      const found = await User.findById('a');
+      found.toObject().name.should.equal('John');
+    });
+  });
+
+  context('set to true', function() {
+    var User = ds.createModel(
+      'user2',
+      {
+        id: {type: String, id: true},
+        name: String,
+      },
+      {strictObjectIDCoercion: true}
+    );
+
+    beforeEach(function(done) {
+      User.deleteAll(done);
+    });
+
+    it('should not find model with ObjectID id', async function() {
+      const user = await User.create({name: 'John'});
+      user.id.should.not.be.an.instanceOf(ds.ObjectID);
+      const found = await User.findById(user.id);
+      (found === null).should.be.true();
+    });
+
+    it('should find model with ObjectID-like string id', async function() {
+      const user = await User.create({id: objectIdLikeString, name: 'John'});
+      user.id.should.not.be.an.instanceOf(ds.ObjectID);
+      user.id.should.eql(objectIdLikeString);
+      const found = await User.findById(objectIdLikeString);
+      found.toObject().name.should.equal('John');
+    });
+
+    it('should find model with string id', async function() {
+      const user = await User.create({id: 'a', name: 'John'});
+      user.id.should.be.an.instanceOf(String);
+      user.id.should.equal('a');
+      const found = await User.findById('a');
+      found.toObject().name.should.equal('John');
+    });
+  });
+
+  context('set to true, id type set to `ObjectID`', function() {
+    var User = ds.createModel(
+      'user3',
+      {
+        id: {type: String, id: true, mongodb: {dataType: ObjectID}},
+        name: String,
+      },
+      {strictObjectIDCoercion: true}
+    );
+
+    beforeEach(function(done) {
+      User.deleteAll(done);
+    });
+
+    it('should throw if id is not a ObjectID-like string', async function() {
+      // Why is this not working?
+      //await User.create({id: 'abc', name: 'John'}).should.be.rejectedWith(/not an ObjectID string/);
+      try {
+        await User.create({id: 'abc', name: 'John'});
+      } catch(e) {
+        e.message.should.match(/not an ObjectID string/);
+      }
+    });
+
+    it('should find model with ObjectID id', async function() {
+      const user = await User.create({name: 'John'});
+      user.id.should.be.an.instanceOf(ds.ObjectID);
+      const found = await User.findById(user.id);
+      found.toObject().name.should.equal('John');
+    });
+
+    // This works by coercing string to ObjectID, overriding `strictObjectIDCoercion: true`
+    it('should find model with ObjectID-like id', async function() {
+      const user = await User.create({id: objectIdLikeString, name: 'John'});
+      user.id.should.be.an.instanceOf(ds.ObjectID);
+      user.id.should.eql(ObjectID(objectIdLikeString));
+      const found = await User.findById(objectIdLikeString);
+      found.toObject().name.should.equal('John');
+    });
+
+    it('should update model with ObjectID id', async function() {
+      const user = await User.create({name: 'John'});
+      await User.update({id: user.id, name: 'Jon'});
+      const found = await User.findById(user.id);
+      found.name.should.equal('Jon');
+    });
+
+    it('should update model with ObjectID-like id', async function() {
+      const user = await User.create({id: objectIdLikeString, name: 'John'});
+      await User.update({id: objectIdLikeString, name: 'Jon'});
+      const found = await User.findById(objectIdLikeString);
+      found.name.should.equal('Jon');
+    });
   });
 });

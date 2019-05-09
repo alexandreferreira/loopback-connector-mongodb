@@ -7,21 +7,23 @@
 
 require('./init.js');
 
-var db, Book, Chapter;
+var Book, Chapter;
+var ds = global.getDataSource();
+var ObjectID = ds.connector.getDefaultIdType();
+var objectIdLikeString = '7cd2ad46ffc580ba45d3cb1f';
 
 describe('ObjectID', function() {
   before(function() {
-    db = global.getDataSource();
-    Book = db.define('Book');
-    Chapter = db.define('Chapter');
+    Book = ds.define('Book');
+    Chapter = ds.define('Chapter');
     Book.hasMany('chapters');
     Chapter.belongsTo('book');
   });
 
   it('should cast foreign keys as ObjectID', function(done) {
     Chapter.beforeCreate = function(next, data) {
-      data.bookId.should.be.an.instanceOf(db.ObjectID);
-      this.bookId.should.be.an.instanceOf(db.ObjectID);
+      data.bookId.should.be.an.instanceOf(ds.ObjectID);
+      this.bookId.should.be.an.instanceOf(ds.ObjectID);
       next();
     };
 
@@ -32,41 +34,45 @@ describe('ObjectID', function() {
   });
 
   it('should convert 24 byte hex string as ObjectID', function() {
-    var ObjectID = db.connector.getDefaultIdType();
-    var str = '52fcef5c0325ace8dcb7a0bd';
-    ObjectID(str).should.be.an.instanceOf(db.ObjectID);
+    var ObjectID = ds.connector.getDefaultIdType();
+    var str = objectIdLikeString;
+    ObjectID(str).should.be.an.instanceOf(ds.ObjectID);
   });
 
   it('should not convert 12 byte string as ObjectID', function() {
-    var ObjectID = db.connector.getDefaultIdType();
+    var ObjectID = ds.connector.getDefaultIdType();
     var str = 'line-by-line';
     ObjectID(str).should.be.equal(str);
   });
 
   it('should keep mongodb ObjectID as is', function() {
-    var ObjectID = db.connector.getDefaultIdType();
-    var id = new db.ObjectID();
-    ObjectID(id).should.be.an.instanceOf(db.ObjectID);
+    var ObjectID = ds.connector.getDefaultIdType();
+    var id = new ds.ObjectID();
+    ObjectID(id).should.be.an.instanceOf(ds.ObjectID);
   });
 
   it('should keep non-string id as it', function() {
-    var ObjectID = db.connector.getDefaultIdType();
+    var ObjectID = ds.connector.getDefaultIdType();
     var id = 123;
     ObjectID(id).should.be.equal(123);
   });
 
   it('coerces ObjectID', function() {
-    const coercedId = db.connector.isObjectIDProperty('Book', {}, '52fcef5c0325ace8dcb7a0bd');
+    const coercedId = ds.connector.isObjectIDProperty('Book', {}, objectIdLikeString);
     coercedId.should.be.True();
   });
 
   it('given strictObjectIDCoercion: true, does not coerce ObjectID', function() {
-    const coercedId = db.connector.isObjectIDProperty(
+    const coercedId = ds.connector.isObjectIDProperty(
       'Book',
       {},
-      '52fcef5c0325ace8dcb7a0bd',
+      objectIdLikeString,
       {strictObjectIDCoercion: true}
     );
     coercedId.should.be.False();
+  });
+
+  context('properties', function() {
+
   });
 });
