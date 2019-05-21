@@ -264,6 +264,11 @@ describe('strictObjectIDCoercion', function() {
       User.deleteAll(done);
     });
 
+    it('should coerce to ObjectID', async function() {
+      const user = await User.create({id: objectIdLikeString, name: 'John'});
+      user.id.should.be.an.instanceOf(ds.ObjectID);
+    });
+
     it('should find model with ObjectID id', async function() {
       const user = await User.create({name: 'John'});
       user.id.should.be.an.instanceOf(ds.ObjectID);
@@ -302,9 +307,13 @@ describe('strictObjectIDCoercion', function() {
       User.deleteAll(done);
     });
 
+    it('should not coerce to ObjectID', async function() {
+      const user = await User.create({id: objectIdLikeString, name: 'John'});
+      user.id.should.equal(objectIdLikeString);
+    });
+
     it('should not find model with ObjectID id', async function() {
       const user = await User.create({name: 'John'});
-      user.id.should.not.be.an.instanceOf(ds.ObjectID);
       const found = await User.findById(user.id);
       (found === null).should.be.true();
     });
@@ -338,6 +347,11 @@ describe('strictObjectIDCoercion', function() {
 
     beforeEach(function(done) {
       User.deleteAll(done);
+    });
+
+    it('should coerce to ObjectID', async function() {
+      const user = await User.create({id: objectIdLikeString, name: 'John'});
+      user.id.should.be.an.instanceOf(ds.ObjectID);
     });
 
     it('should throw if id is not a ObjectID-like string', async function() {

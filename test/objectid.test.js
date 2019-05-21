@@ -10,7 +10,7 @@ require('./init.js');
 var Book, Chapter;
 var ds = global.getDataSource();
 var ObjectID = ds.connector.getDefaultIdType();
-var objectIdLikeString = '7cd2ad46ffc580ba45d3cb1f';
+var objectIDLikeString = '7cd2ad46ffc580ba45d3cb1f';
 
 describe('ObjectID', function() {
   before(function() {
@@ -35,7 +35,7 @@ describe('ObjectID', function() {
 
   it('should convert 24 byte hex string as ObjectID', function() {
     var ObjectID = ds.connector.getDefaultIdType();
-    var str = objectIdLikeString;
+    var str = objectIDLikeString;
     ObjectID(str).should.be.an.instanceOf(ds.ObjectID);
   });
 
@@ -57,22 +57,52 @@ describe('ObjectID', function() {
     ObjectID(id).should.be.equal(123);
   });
 
-  it('coerces ObjectID', function() {
-    const coercedId = ds.connector.isObjectIDProperty('Book', {}, objectIdLikeString);
-    coercedId.should.be.True();
+  context('strictObjectIDCoercion', function () {
+    context('set to false (default)', function () {
+
+      beforeEach(function(done) {
+        Book.deleteAll(done);
+      });
+
+      it('it should coerce to ObjectID', async function() {
+        Book = ds.createModel(
+          'book',
+          {
+            xid: {type: String}
+          }
+        );
+        const book = await Book.create({xid: objectIDLikeString});
+        book.xid.should.be.an.instanceOf(ds.ObjectID);
+      });
+    });
+
+    context('set to true', function () {
+      it('should not coerce to ObjectID', async function() {
+        Book = ds.createModel(
+          'book',
+          {
+            xid: {type: String}
+          },
+          {strictObjectIDCoercion: true}
+        );
+        const book = await Book.create({xid: objectIDLikeString});
+        book.xid.should.equal(objectIDLikeString);
+      });
+
+      it('if type is set to ObjectID, should coerce to ObjectID', async function() {
+        Book = ds.createModel(
+          'book',
+          {
+            xid: {type: String, mongodb: {dataType: ObjectID}}
+          },
+          {strictObjectIDCoercion: true}
+        );
+        const book = await Book.create({xid: objectIDLikeString});
+        book.xid.should.be.an.instanceOf(ds.ObjectID);
+      });
+
+    });
+
   });
 
-  it('given strictObjectIDCoercion: true, does not coerce ObjectID', function() {
-    const coercedId = ds.connector.isObjectIDProperty(
-      'Book',
-      {},
-      objectIdLikeString,
-      {strictObjectIDCoercion: true}
-    );
-    coercedId.should.be.False();
-  });
-
-  context('properties', function() {
-
-  });
 });
